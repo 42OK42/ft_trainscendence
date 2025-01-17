@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+{% if user.is_authenticated %}
+<img src="{{ user.picture }}" alt="Profile Picture">
+<div></div>
+Hi {{ user.display_name|default:user.first_name }} {{ user.last_name }}!
+
+<div>
+    <p>Wins: {{ user.wins }}</p>
+    <p>Draws: {{ user.draws }}</p>
+    <p>Losses: {{ user.losses }}</p>
+</div>
+
+<form action="{% url 'logout' %}" method="post">
+  {% csrf_token %}
+  <button type="submit">Log Out</button>
+</form>
+
+<pre class="api-response">{{ user.api_response|safe }}</pre> <!-- Display the API response -->
+
+{% else %}
+<p>You are not logged in</p>
+<a href="{% url 'login' %}">Log In</a> |
+<a href="{% url 'signup' %}">Sign Up</a>
+{% endif %}
+{% endblock content %}
