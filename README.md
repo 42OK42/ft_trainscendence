@@ -36,3 +36,10 @@ git checkout beta_register_login
 3. Start the development server:
    ```bash
    python3 manage.py runserver
+
+
+for olli branch
+
+   python3 -m uvicorn pong_game:app --host 0.0.0.0 --reload
+
+available at http://localhost:8000/
