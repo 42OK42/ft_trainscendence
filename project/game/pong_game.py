@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import asyncio
@@ -7,6 +7,8 @@ from player import Player  # Fixed import statement
 import random
 import math
 from ai_player import AI  # neue Import
+from menu_state import MenuState
+from game_objects import Ball, Paddle  # Neue Imports
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -14,10 +16,13 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Player dictionary for active games
 games = {}
 
+# Globaler Menüzustand
+menu_state = MenuState()
+
 class GameState:
 	def __init__(self, with_ai=False, difficulty=0):
-		self.player1 = Player(is_left_player=True)
-		self.player2 = Player(is_left_player=False)
+		self.player1 = Player(is_left_player=True, is_ai=False)  # Immer Human
+		self.player2 = Player(is_left_player=False, is_ai=with_ai)  # AI wenn aktiviert
 		self.with_ai = with_ai
 		self.ai = AI(difficulty) if with_ai else None
 		self.ball_x = 400
@@ -31,6 +36,16 @@ class GameState:
 		self.game_over = False
 		self.winner = None
 		self.reset_ball()
+
+	def reset_game(self):
+		"""Reset the entire game state"""
+		self.score_player1 = 0
+		self.score_player2 = 0
+		self.game_over = False
+		self.winner = None
+		self.reset_ball()
+		self.player1.reset()
+		self.player2.reset()
 
 	def reset_ball(self):
 		"""Resets ball to center with random direction"""
@@ -57,32 +72,30 @@ class GameState:
 		if self.game_over:
 			return
 
-		# Wenn AI aktiv ist, ignoriere Eingaben für Spieler 2
-		if self.with_ai and player_id == 2:
+		# Hole den richtigen Spieler
+		player = self.player1 if player_id == 1 else self.player2
+
+		# Ignoriere Eingaben für AI-Spieler
+		if player.is_ai:
 			return
 
-		if player_id == 1:
-			player = self.player1
-		else:
-			player = self.player2
-
-		if input_data.get("up"):
-			player.move_up()
-		if input_data.get("down"):
-			player.move_down()
+		if input_data.get("move"):
+			direction = input_data.get("direction", 0)
+			player.move(direction)
 
 	def update_ball(self):
 		"""Updates ball position and handles collisions"""
 		if self.game_over:
 			return
 
-		# Update AI if active
+		# Update AI if player2 is AI
 		if self.with_ai:
 			ball = Ball(self.ball_x, self.ball_y, self.ball_dx, self.ball_dy)
 			paddle = Paddle(self.player2.x, self.player2.y, self.player2.height)
-			new_y = self.ai.update(ball, paddle, 500)  # 500 ist canvas height
+			new_y = self.ai.update(ball, paddle, 500)
 			self.player2.y = new_y
 
+		# Update ball position
 		self.ball_x += self.ball_dx
 		self.ball_y += self.ball_dy
 		
@@ -92,24 +105,19 @@ class GameState:
 			
 		# Paddle collisions
 		for player in [self.player1, self.player2]:
-			if (player.x < self.ball_x < player.x + player.width and
-				player.y < self.ball_y < player.y + player.height):
+			if (player.x <= self.ball_x <= player.x + player.width and
+				player.y <= self.ball_y <= player.y + player.height):
 				self.ball_dx *= -1
-				# Add a bit of randomness to y direction
-				self.ball_dy += random.uniform(-1, 1)
-				# Normalize speed
-				speed = math.sqrt(self.ball_dx**2 + self.ball_dy**2)
-				self.ball_dx = (self.ball_dx/speed) * self.ball_speed
-				self.ball_dy = (self.ball_dy/speed) * self.ball_speed
+				break
 				
 		# Score points
 		if self.ball_x <= 0:
-			self.player2.increase_score()
-			self.check_winner()  # Check for winner after score
+			self.score_player2 += 1
+			self.check_winner()
 			self.reset_ball()
 		elif self.ball_x >= 800:
-			self.player1.increase_score()
-			self.check_winner()  # Check for winner after score
+			self.score_player1 += 1
+			self.check_winner()
 			self.reset_ball()
 
 	def to_dict(self):
@@ -151,11 +159,12 @@ async def websocket_endpoint(websocket: WebSocket):
 		# Empfange die Spielkonfiguration
 		data = await websocket.receive_text()
 		config = json.loads(data)
+		print(f"Received game config: {config}")  # Debug print
 		with_ai = config.get('withAI', False)
 		difficulty = config.get('difficulty', 0)
 		
 		games["game1"] = {
-			"state": GameState(with_ai, difficulty),
+			"state": GameState(with_ai=with_ai, difficulty=difficulty),
 			"connections": []
 		}
 		asyncio.create_task(game_loop("game1"))
@@ -166,19 +175,59 @@ async def websocket_endpoint(websocket: WebSocket):
 		while True:
 			data = await websocket.receive_text()
 			data = json.loads(data)
+			print(f"Received game input: {data}")  # Debug print
 			
 			if "move" in data:
 				player_num = data.get("player")
 				direction = data.get("direction")
 				
+				game_state = games["game1"]["state"]
+				print(f"Game state AI status: {game_state.with_ai}")  # Debug print
+				
+				# Ignoriere Eingaben für Spieler 2 wenn AI aktiv ist
+				if game_state.with_ai and player_num == 2:
+					continue
+					
 				if player_num in [1, 2]:
-					player = getattr(games["game1"]["state"], f"player{player_num}")
+					player = getattr(game_state, f"player{player_num}")
 					player.move(direction)
 					
 	except Exception as e:
-		print(f"Error: {e}")
+		print(f"Error: {e}")  # Debug print
 	finally:
 		games["game1"]["connections"].remove(websocket)
+
+@app.websocket("/ws/menu")
+async def menu_websocket(websocket: WebSocket):
+	await websocket.accept()
+	
+	try:
+		# Sende initialen Menüzustand direkt nach Verbindungsaufbau
+		await websocket.send_json({
+			'type': 'menu_update',
+			'state': menu_state.to_dict()
+		})
+		
+		while True:
+			data = await websocket.receive_json()
+			
+			if 'key' in data:
+				result = menu_state.handle_input(data['key'])
+				if result:
+					# Wenn ein Spiel gestartet werden soll
+					await websocket.send_json({
+						'type': 'start_game',
+						'config': result
+					})
+				else:
+					# Sende aktualisierten Menüzustand
+					await websocket.send_json({
+						'type': 'menu_update',
+						'state': menu_state.to_dict()
+					})
+					
+	except WebSocketDisconnect:
+		pass
 
 @app.get("/")
 async def read_index():

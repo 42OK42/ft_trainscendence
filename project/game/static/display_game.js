@@ -13,11 +13,14 @@ class Game {
 		this.withAI = withAI;
 		this.aiDifficulty = difficulty;
 		
+		console.log("Game initialized with:", { withAI, difficulty });  // Debug log
+		
 		this.setupWebSocket();
 		this.setupControls();
 		this.gameLoop();
 		this.game_over = false;
 		this.winner = null;
+		this.setupPlayAgainButton();
 	}
 
 	setupWebSocket() {
@@ -32,8 +35,10 @@ class Game {
 		
 		this.ws.onopen = () => {
 			console.log('WebSocket connection established');
-			// Send initial message
-			this.ws.send(JSON.stringify({action: 'START'}));
+			this.ws.send(JSON.stringify({
+				withAI: this.withAI,
+				difficulty: this.aiDifficulty
+			}));
 		};
 
 		this.ws.onmessage = (event) => {
@@ -54,6 +59,11 @@ class Game {
 		document.addEventListener('keydown', (e) => {
 			let data = null;
 			
+			// Wenn AI aktiv ist, ignoriere Eingaben für Spieler 2
+			if (this.withAI && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+				return;
+			}
+			
 			switch(e.key) {
 				// Spieler 1 (W/S)
 				case 'w':
@@ -73,9 +83,35 @@ class Game {
 			}
 			
 			if (data && this.ws.readyState === WebSocket.OPEN) {
+				console.log("Sending input:", data);  // Debug log
 				this.ws.send(JSON.stringify(data));
 			}
 		});
+	}
+
+	setupPlayAgainButton() {
+		// Erstelle den Button, aber verstecke ihn zunächst
+		this.playAgainBtn = document.createElement('button');
+		this.playAgainBtn.innerText = 'Play Again';
+		this.playAgainBtn.style.position = 'absolute';
+		this.playAgainBtn.style.left = '50%';
+		this.playAgainBtn.style.top = '60%';
+		this.playAgainBtn.style.transform = 'translate(-50%, -50%)';
+		this.playAgainBtn.style.padding = '10px 20px';
+		this.playAgainBtn.style.fontSize = '20px';
+		this.playAgainBtn.style.cursor = 'pointer';
+		this.playAgainBtn.style.display = 'none';
+		
+		// Event Listener für den Button
+		this.playAgainBtn.addEventListener('click', () => {
+			// Entferne den Button
+			this.playAgainBtn.style.display = 'none';
+			
+			// Starte ein neues Spiel mit den gleichen Einstellungen
+			new Game(this.withAI, this.aiDifficulty);
+		});
+		
+		document.body.appendChild(this.playAgainBtn);
 	}
 
 	gameLoop() {
@@ -99,14 +135,15 @@ class Game {
 			this.ctx.closePath();
 		}
 
-		// Draw game over message
+		// Draw game over message and show play again button
 		if (this.game_over && this.winner) {
 			this.ctx.fillStyle = 'white';
 			this.ctx.font = '48px Arial';
 			this.ctx.textAlign = 'center';
 			this.ctx.fillText(`${this.winner} wins!`, this.canvas.width/2, this.canvas.height/2);
-			this.ctx.font = '24px Arial';
-			this.ctx.fillText('Refresh page to play again', this.canvas.width/2, this.canvas.height/2 + 40);
+			
+			// Zeige den Play Again Button
+			this.playAgainBtn.style.display = 'block';
 		}
 		
 		requestAnimationFrame(() => this.gameLoop());
@@ -184,6 +221,13 @@ class Game {
 			} else {
 				this.player2.y -= speed;
 			}
+		}
+	}
+
+	// Wenn das Spiel beendet wird (z.B. bei Verbindungsabbruch oder Neustart)
+	cleanup() {
+		if (this.playAgainBtn) {
+			this.playAgainBtn.remove();
 		}
 	}
 }
