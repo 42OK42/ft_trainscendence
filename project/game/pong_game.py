@@ -9,12 +9,25 @@ import math
 from ai_player import AI  # neue Import
 from menu_state import MenuState
 from game_objects import Ball, Paddle  # Neue Imports
+from contextlib import asynccontextmanager
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Player dictionary for active games
+# Globale Variable für aktive Spiele
 games = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	yield
+	# Cleanup beim Beenden
+	for game_id in games:
+		for connection in games[game_id]["connections"]:
+			try:
+				await connection.close()
+			except:
+				pass
+	games.clear()
+
+app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Globaler Menüzustand
 menu_state = MenuState()
@@ -156,10 +169,8 @@ async def websocket_endpoint(websocket: WebSocket):
 	await websocket.accept()
 	
 	if "game1" not in games:
-		# Empfange die Spielkonfiguration
 		data = await websocket.receive_text()
 		config = json.loads(data)
-		print(f"Received game config: {config}")  # Debug print
 		with_ai = config.get('withAI', False)
 		difficulty = config.get('difficulty', 0)
 		
@@ -169,9 +180,8 @@ async def websocket_endpoint(websocket: WebSocket):
 		}
 		asyncio.create_task(game_loop("game1"))
 	
-	games["game1"]["connections"].append(websocket)
-	
 	try:
+		games["game1"]["connections"].append(websocket)
 		while True:
 			data = await websocket.receive_text()
 			data = json.loads(data)
@@ -192,10 +202,18 @@ async def websocket_endpoint(websocket: WebSocket):
 					player = getattr(game_state, f"player{player_num}")
 					player.move(direction)
 					
+	except WebSocketDisconnect:
+		print("WebSocket disconnected")
 	except Exception as e:
-		print(f"Error: {e}")  # Debug print
+		print(f"Error: {e}")
 	finally:
-		games["game1"]["connections"].remove(websocket)
+		if websocket in games["game1"]["connections"]:
+			games["game1"]["connections"].remove(websocket)
+		await websocket.close()
+		
+		# Wenn keine Verbindungen mehr, Game aufräumen
+		if len(games["game1"]["connections"]) == 0:
+			games.pop("game1", None)
 
 @app.websocket("/ws/menu")
 async def menu_websocket(websocket: WebSocket):
