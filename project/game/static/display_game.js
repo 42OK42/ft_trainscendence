@@ -3,7 +3,7 @@ class PongDisplay {
         this.canvas = document.getElementById('pongCanvas');
         this.ctx = this.canvas.getContext('2d');
         console.log("Canvas initialized");
-        this.ws = new WebSocket('ws://' + window.location.hostname + ':8080/ws/game1');
+        this.ws = new WebSocket('ws://' + window.location.hostname + ':8000/ws/game1');
         this.setupWebSocket();
         this.setupControls();
     }
