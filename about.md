@@ -6,10 +6,11 @@ Used technologies:
 - PostgreSQL
 - PG4Admin
 
+- Daphne
+
 Authentication:
 - OAuth 2.0
 - JSON Web Tokens (JWT)
-- Daphne
 
 Graphics: 
 - ThreeJS
