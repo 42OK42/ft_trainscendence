@@ -64,6 +64,11 @@ class Menu {
         // AI game option
         this.ctx.fillStyle = state.selected_option === 1 ? '#00ff00' : 'white';
         this.ctx.fillText('Play vs AI', this.canvas.width/2, this.canvas.height/2 + 50);
+
+        // Hinweistext
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText('Use Arrow Keys to select, Enter to confirm', this.canvas.width/2, this.canvas.height/2 + 100);
     }
 
     renderDifficultyMenu(state) {

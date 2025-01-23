@@ -34,34 +34,25 @@ menu_state = MenuState()
 
 class GameState:
 	def __init__(self, with_ai=False, difficulty=0):
-		self.player1 = Player(is_left_player=True, is_ai=False)  # Immer Human
-		self.player2 = Player(is_left_player=False, is_ai=with_ai)  # AI wenn aktiviert
+		self.player1 = Player(is_left_player=True, is_ai=False)
+		self.player2 = Player(is_left_player=False, is_ai=with_ai)
 		self.with_ai = with_ai
 		self.ai = AI(difficulty) if with_ai else None
 		self.ball_x = 400
 		self.ball_y = 250
 		self.ball_dx = -5
 		self.ball_dy = 5
-		self.ball_speed = 3
+		self.ball_speed = 7
 		self.ball_radius = 10
 		self.score_player1 = 0
 		self.score_player2 = 0
 		self.game_over = False
 		self.winner = None
-		self.reset_ball()
+		self.ai_enabled = False
+		self.ai_difficulty = None
 
-	def reset_game(self):
-		"""Reset the entire game state"""
-		self.score_player1 = 0
-		self.score_player2 = 0
-		self.game_over = False
-		self.winner = None
-		self.reset_ball()
-		self.player1.reset()
-		self.player2.reset()
-
-	def reset_ball(self):
-		"""Resets ball to center with random direction"""
+	def reset_round(self):
+		"""Reset nur Ball und Paddle Positionen nach einem Punkt"""
 		self.ball_x = 400
 		self.ball_y = 250
 		# Random angle between -45 and 45 degrees, or 135-225 degrees
@@ -71,14 +62,43 @@ class GameState:
 		])
 		self.ball_dx = math.cos(angle) * self.ball_speed
 		self.ball_dy = math.sin(angle) * self.ball_speed
+		# Reset paddle positions
+		self.player1.reset_position()
+		self.player2.reset_position()
+
+	def reset_game(self):
+		"""Reset the game state completely"""
+		# Grundlegende Spielwerte zurücksetzen
+		self.ball_x = 400
+		self.ball_y = 250
+		self.ball_dx = 5 * (1 if random.random() > 0.5 else -1)  # Zufällige Startrichtung
+		self.ball_dy = 5 * (1 if random.random() > 0.5 else -1)
+		
+		# Spielstatus zurücksetzen
+		self.game_over = False
+		self.winner = None
+		self.score_player1 = 0
+		self.score_player2 = 0
+		
+		# Spieler zurücksetzen
+		self.player1.y = (500 - self.player1.height) / 2
+		self.player2.y = (500 - self.player2.height) / 2
+		
+		# AI-Status zurücksetzen wenn nötig
+		if not self.ai_enabled:
+			self.ai_difficulty = None
 
 	def check_winner(self):
-		if self.player1.score >= 5:
+		"""Prüft ob ein Spieler gewonnen hat"""
+		if self.score_player1 >= 5:
 			self.game_over = True
 			self.winner = "Player 1"
-		elif self.player2.score >= 5:
+			return True
+		elif self.score_player2 >= 5:
 			self.game_over = True
 			self.winner = "Player 2"
+			return True
+		return False
 
 	def handle_input(self, player_id: int, input_data: dict):
 		"""Verarbeitet Spielereingaben"""
@@ -126,18 +146,24 @@ class GameState:
 		# Score points
 		if self.ball_x <= 0:
 			self.score_player2 += 1
-			self.check_winner()
-			self.reset_ball()
+			if not self.check_winner():  # Nur Round reset wenn noch kein Gewinner
+				self.reset_round()
 		elif self.ball_x >= 800:
 			self.score_player1 += 1
-			self.check_winner()
-			self.reset_ball()
+			if not self.check_winner():  # Nur Round reset wenn noch kein Gewinner
+				self.reset_round()
 
 	def to_dict(self):
 		"""Converts game state to dictionary for JSON transmission"""
 		return {
-			"player1": self.player1.to_dict(),
-			"player2": self.player2.to_dict(),
+			"player1": {
+				**self.player1.to_dict(),
+				"score": self.score_player1  # Explizit den Score aus dem GameState nehmen
+			},
+			"player2": {
+				**self.player2.to_dict(),
+				"score": self.score_player2  # Explizit den Score aus dem GameState nehmen
+			},
 			"ball": {
 				"x": self.ball_x,
 				"y": self.ball_y,
@@ -146,6 +172,25 @@ class GameState:
 			"game_over": self.game_over,
 			"winner": self.winner
 		}
+
+	def handle_menu_action(self, action):
+		"""Handle menu actions"""
+		if action == "BACK_TO_MENU":
+			self.game_state = "MENU"
+			self.selected_option = 0
+			self.reset_game()
+		elif action == "START_GAME":
+			self.game_state = "GAME"
+			self.reset_game()  # Reset beim Spielstart
+			self.ai_enabled = False
+		elif action == "START_AI_GAME":
+			self.game_state = "AI_DIFFICULTY"
+			self.selected_option = 0
+		elif action == "SELECT_AI_DIFFICULTY":
+			self.game_state = "GAME"
+			self.reset_game()  # Reset beim AI-Spielstart
+			self.ai_enabled = True
+			self.ai_difficulty = self.selected_option  # 0: Easy, 1: Medium, 2: Hard
 
 async def game_loop(game_id: str):
 	"""Main game loop that updates ball position"""

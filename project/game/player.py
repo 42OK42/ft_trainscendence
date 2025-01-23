@@ -7,11 +7,15 @@ class Player:
         self.width = 10
         self.speed = 5
         self.score = 0
-        self.reset()  # Initialisiere Position
+        self.reset_position()
         
-    def reset(self):
-        """Reset player position and score"""
+    def reset_position(self):
+        """Reset nur die Position"""
         self.y = 250  # Reset to middle position
+
+    def reset_complete(self):
+        """Reset Position und Score"""
+        self.reset_position()
         self.score = 0
         
     def move(self, direction: int) -> None:

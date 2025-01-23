@@ -1,29 +1,37 @@
 class Game {
-	constructor(withAI = false, difficulty = 0) {
+	constructor(config = null) {
 		this.canvas = document.getElementById('pongCanvas');
-		this.canvas.style.display = 'block';
 		this.ctx = this.canvas.getContext('2d');
-		console.log("Canvas initialized");
-		this.ws = new WebSocket('ws://' + window.location.hostname + ':8000/ws/game1');
+		this.canvas.style.display = 'block';
 		
-		// Set canvas size explicitly
-		this.canvas.width = 800;
-		this.canvas.height = 500;
+		// Warte auf Konfiguration vom Menü
+		if (!config) {
+			console.log("No config provided, waiting for menu selection");
+			return;
+		}
 		
-		this.withAI = withAI;
-		this.aiDifficulty = difficulty;
+		this.withAI = config.withAI;
+		this.aiDifficulty = config.difficulty;
 		
-		console.log("Game initialized with:", { withAI, difficulty });  // Debug log
+		console.log("Starting game with config:", config);
 		
 		this.setupWebSocket();
 		this.setupControls();
-		this.gameLoop();
-		this.game_over = false;
-		this.winner = null;
 		this.setupPlayAgainButton();
+		this.gameLoop();
 	}
 
 	setupWebSocket() {
+		this.ws = new WebSocket('ws://' + window.location.hostname + ':8000/ws/game1');
+		
+		this.ws.onopen = () => {
+			console.log("WebSocket connected, sending config");
+			this.ws.send(JSON.stringify({
+				withAI: this.withAI,
+				difficulty: this.aiDifficulty
+			}));
+		};
+		
 		this.socket = new WebSocket('ws://localhost:8000/ws/game/');
 		
 		this.socket.onmessage = (event) => {
@@ -31,14 +39,6 @@ class Game {
 			if (data.type === 'ai_move') {
 				this.player2.y = data.paddle_y;
 			}
-		};
-		
-		this.ws.onopen = () => {
-			console.log('WebSocket connection established');
-			this.ws.send(JSON.stringify({
-				withAI: this.withAI,
-				difficulty: this.aiDifficulty
-			}));
 		};
 
 		this.ws.onmessage = (event) => {
@@ -90,28 +90,34 @@ class Game {
 	}
 
 	setupPlayAgainButton() {
-		// Erstelle den Button, aber verstecke ihn zunächst
-		this.playAgainBtn = document.createElement('button');
-		this.playAgainBtn.innerText = 'Play Again';
-		this.playAgainBtn.style.position = 'absolute';
-		this.playAgainBtn.style.left = '50%';
-		this.playAgainBtn.style.top = '60%';
-		this.playAgainBtn.style.transform = 'translate(-50%, -50%)';
-		this.playAgainBtn.style.padding = '10px 20px';
-		this.playAgainBtn.style.fontSize = '20px';
-		this.playAgainBtn.style.cursor = 'pointer';
-		this.playAgainBtn.style.display = 'none';
+		this.menuBtn = document.createElement('button');
+		this.menuBtn.innerText = 'Back to Menu';
+		this.menuBtn.style.position = 'absolute';
+		this.menuBtn.style.left = '50%';
+		this.menuBtn.style.top = '60%';
+		this.menuBtn.style.transform = 'translate(-50%, -50%)';
+		this.menuBtn.style.padding = '10px 20px';
+		this.menuBtn.style.fontSize = '20px';
+		this.menuBtn.style.cursor = 'pointer';
+		this.menuBtn.style.display = 'none';
 		
-		// Event Listener für den Button
-		this.playAgainBtn.addEventListener('click', () => {
+		this.menuBtn.addEventListener('click', () => {
 			// Entferne den Button
-			this.playAgainBtn.style.display = 'none';
+			this.menuBtn.style.display = 'none';
 			
-			// Starte ein neues Spiel mit den gleichen Einstellungen
-			new Game(this.withAI, this.aiDifficulty);
+			// Cleanup
+			if (this.ws) {
+				this.ws.close();
+			}
+			
+			// Verstecke das Spiel-Canvas
+			this.canvas.style.display = 'none';
+			
+			// Starte neues Menü
+			window.location.reload();
 		});
 		
-		document.body.appendChild(this.playAgainBtn);
+		document.body.appendChild(this.menuBtn);
 	}
 
 	gameLoop() {
@@ -119,13 +125,16 @@ class Game {
 		this.ctx.fillStyle = 'black';
 		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 		
-		// Draw players
+		// Draw center line
+		this.drawCenterLine();
+		
+		// Draw scores
+		this.drawScores();
+		
+		// Draw players if they exist
 		if (this.player1) this.drawPlayer(this.player1);
 		if (this.player2) this.drawPlayer(this.player2);
 		
-		// Draw center line
-		this.drawCenterLine();
-
 		// Draw ball if game is not over
 		if (this.ball && !this.game_over) {
 			this.ctx.beginPath();
@@ -135,15 +144,13 @@ class Game {
 			this.ctx.closePath();
 		}
 
-		// Draw game over message and show play again button
+		// Draw game over message and show menu button
 		if (this.game_over && this.winner) {
 			this.ctx.fillStyle = 'white';
 			this.ctx.font = '48px Arial';
 			this.ctx.textAlign = 'center';
 			this.ctx.fillText(`${this.winner} wins!`, this.canvas.width/2, this.canvas.height/2);
-			
-			// Zeige den Play Again Button
-			this.playAgainBtn.style.display = 'block';
+			this.menuBtn.style.display = 'block';
 		}
 		
 		requestAnimationFrame(() => this.gameLoop());
@@ -152,11 +159,6 @@ class Game {
 	drawPlayer(player) {
 		this.ctx.fillStyle = 'white';
 		this.ctx.fillRect(player.x, player.y, player.width, player.height);
-		
-		// Draw score
-		this.ctx.font = '24px Arial';
-		this.ctx.fillStyle = 'white';
-		this.ctx.fillText(player.score, player.is_left_player ? 100 : 700, 50);
 	}
 
 	drawCenterLine() {
@@ -167,6 +169,18 @@ class Game {
 		this.ctx.strokeStyle = 'white';
 		this.ctx.stroke();
 		this.ctx.setLineDash([]);
+	}
+
+	drawScores() {
+		this.ctx.fillStyle = 'white';
+		this.ctx.font = '32px Arial';
+		this.ctx.textAlign = 'center';
+		
+		// Scores direkt aus den Player-Objekten lesen
+		if (this.player1 && this.player2) {
+			this.ctx.fillText(this.player1.score.toString(), 100, 50);
+			this.ctx.fillText(this.player2.score.toString(), 700, 50);
+		}
 	}
 
 	update() {
@@ -224,13 +238,38 @@ class Game {
 		}
 	}
 
-	// Wenn das Spiel beendet wird (z.B. bei Verbindungsabbruch oder Neustart)
 	cleanup() {
-		if (this.playAgainBtn) {
-			this.playAgainBtn.remove();
+		if (this.menuBtn) {
+			this.menuBtn.remove();
+		}
+		if (this.ws) {
+			this.ws.close();
+		}
+	}
+
+	updateGameState(state) {
+		// Debug-Ausgabe hinzufügen
+		console.log('Received state update:', state);
+		
+		this.gameState = state;
+		if (state.players && state.players.length >= 2) {
+			this.player1 = state.players[0];
+			this.player2 = state.players[1];
 		}
 	}
 }
 
-// Start menu
-const menu = new Menu();
+// Menü-Handler
+window.onload = () => {
+	const gameCanvas = document.getElementById('pongCanvas');
+	if (gameCanvas) {
+		gameCanvas.style.display = 'block';
+		new Menu();
+	}
+};
+
+// Diese Funktion wird vom Menü aufgerufen
+function startGame(config) {
+	console.log("Starting game with config from menu:", config);
+	new Game(config);
+}
