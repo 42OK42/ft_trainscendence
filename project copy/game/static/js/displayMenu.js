@@ -74,19 +74,23 @@ class MenuDisplay {
         `;
     }
 
-    saveSettings() {
-        const settings = {
-            ball_speed: parseInt(document.getElementById('ball-speed').value),
-            paddle_speed: parseInt(document.getElementById('paddle-speed').value),
-            winning_score: parseInt(document.getElementById('winning-score').value),
-            paddle_size: document.getElementById('paddle-size').value
-        };
-
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                action: 'update_settings',
+    async function saveSettings() {
+        try {
+            const settings = {
+                ball_speed: parseInt(document.getElementById('ball-speed').value),
+                paddle_speed: parseInt(document.getElementById('paddle-speed').value),
+                winning_score: parseInt(document.getElementById('winning-score').value),
+                paddle_size: document.getElementById('paddle-size').value
+            };
+            
+            console.log('Sending settings:', settings);  // Debug-Log
+            
+            await socket.send(JSON.stringify({
+                action: "update_settings",
                 settings: settings
             }));
+        } catch (error) {
+            console.error('Error saving settings:', error);
         }
     }
 

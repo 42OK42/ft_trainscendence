@@ -1,13 +1,15 @@
 from fastapi import FastAPI, WebSocket
 import json
+from settings import GameSettings
 
 class Menu:
     def __init__(self):
+        self.game_settings = GameSettings()
         self.current_menu_stack = []
         self.menu_items = [
-            {"id": "start", "text": "Start Game"},
+            {"id": "start_game", "text": "Start Game"},
             {"id": "settings", "text": "Settings"},
-            {"id": "leaderboard", "text": "Leaderboard"}
+            {"id": "help", "text": "Help"}
         ]
         
         self.game_mode_items = [
@@ -30,22 +32,16 @@ class Menu:
             {"id": "back", "text": "Back"}
         ]
 
-        self.settings = {
-            "ball_speed": 5,
-            "paddle_speed": 5,
-            "winning_score": 5,
-            "paddle_size": "middle"
-        }
-
     async def handle_menu_selection(self, websocket: WebSocket, selection: str):
-        if selection == "start":
+        print(f"Menu selection received: {selection}")  # Debug
+        if selection == "start_game":
             self.current_menu_stack.append("main")
             return {"action": "show_submenu", "menu_items": self.game_mode_items}
         
         elif selection == "settings":
             return {
                 "action": "show_settings",
-                "settings": self.settings
+                "settings": self.game_settings.get_settings()
             }
             
         elif selection in ["tournament", "single_game"]:
@@ -73,37 +69,15 @@ class Menu:
                     return {"action": "show_submenu", "menu_items": self.play_mode_items}
             return {"action": "show_main_menu", "menu_items": self.menu_items}
             
-        elif selection == "leaderboard":
-            return {"action": "show_leaderboard"}
+        elif selection == "help":
+            return {"action": "show_help"}
             
         elif selection == "exit":
             return {"action": "exit_game"}
 
     async def update_settings(self, settings_data):
-        try:
-            ball_speed = int(settings_data.get("ball_speed", 5))
-            paddle_speed = int(settings_data.get("paddle_speed", 5))
-            winning_score = int(settings_data.get("winning_score", 5))
-            paddle_size = settings_data.get("paddle_size", "middle")
-            
-            if paddle_size not in ["small", "middle", "big"]:
-                paddle_size = "middle"
-                
-            if (1 <= ball_speed <= 10 and 
-                1 <= paddle_speed <= 10 and 
-                1 <= winning_score <= 20):
-                
-                self.settings = {
-                    "ball_speed": ball_speed,
-                    "paddle_speed": paddle_speed,
-                    "winning_score": winning_score,
-                    "paddle_size": paddle_size
-                }
-                return {"action": "settings_updated", "settings": self.settings}
-            else:
-                return {"action": "settings_error", "message": "Values must be between 1 and 10"}
-        except ValueError:
-            return {"action": "settings_error", "message": "Invalid input values"}
+        print(f"Menu update_settings called with: {settings_data}")  # Debug
+        return await self.game_settings.update_settings(settings_data)
 
     async def get_menu_items(self):
         return self.menu_items 
@@ -113,3 +87,6 @@ class Menu:
         # It's assumed to exist as it's called in the code block
         # Implementation of display_settings method
         pass 
+
+    def get_current_settings(self):
+        return self.game_settings.get_settings() 
