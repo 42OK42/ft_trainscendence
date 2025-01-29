@@ -39,6 +39,13 @@ class Menu:
             {"id": "8_players", "text": "8 Players"},
             {"id": "back", "text": "Back"}
         ]
+        
+        # Neues Online-Modus-Menü
+        self.online_mode_items = [
+            {"id": "host", "text": "Host Game"},
+            {"id": "join", "text": "Join Game"},
+            {"id": "back", "text": "Back"}
+        ]
 
     async def handle_menu_selection(self, websocket: WebSocket, selection: str):
         print(f"\n=== Menu Selection ===")
@@ -58,7 +65,7 @@ class Menu:
         elif selection == "leaderboard":
             return {"action": "show_leaderboard"}
         
-        elif selection in ["local", "online"]:
+        elif selection == "local":
             game_settings = self.game_settings.get_settings()
             game_settings.update({
                 "mode": selection,
@@ -68,6 +75,24 @@ class Menu:
             
             if self.is_tournament:
                 self.current_menu_stack.append("mode")
+                return {"action": "show_submenu", "menu_items": self.tournament_size_items}
+            return {"action": "start_game", "settings": game_settings}
+        
+        elif selection == "online":
+            self.current_menu_stack.append("play_mode")
+            return {"action": "show_submenu", "menu_items": self.online_mode_items}
+        
+        elif selection in ["host", "join"]:
+            game_settings = self.game_settings.get_settings()
+            game_settings.update({
+                "mode": "online",
+                "online_type": selection,
+                "is_tournament": self.is_tournament
+            })
+            self.current_game_settings = game_settings
+            
+            if self.is_tournament:
+                self.current_menu_stack.append("online_mode")
                 return {"action": "show_submenu", "menu_items": self.tournament_size_items}
             return {"action": "start_game", "settings": game_settings}
         
