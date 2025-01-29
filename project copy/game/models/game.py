@@ -17,7 +17,7 @@ class PongGame:
         }
         
         self.BALL_SPEED_SCALE = 0.003
-        self.PADDLE_SPEED_SCALE = 0.015
+        self.PADDLE_SPEED_SCALE = 0.0008  # Hier anpassen für feinere Kontrolle
         
         self.player1 = player1
         self.player2 = player2

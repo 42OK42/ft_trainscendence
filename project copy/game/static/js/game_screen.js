@@ -8,6 +8,7 @@ class GameScreen {
         this.ws = null;
         this.keyState = {};
         this.scoreBoard = null;
+        this.gameMode = new URLSearchParams(window.location.search).get('mode') || 'pvp';
         
         this.setupWebSocket();
         this.setupControls();
@@ -29,28 +30,45 @@ class GameScreen {
     }
 
     setupControls() {
+        this.keyState = {
+            'w': false,
+            's': false,
+            'ArrowUp': false,
+            'ArrowDown': false
+        };
+
+        // Kontinuierliches Senden, wenn Tasten gedrückt sind
+        this.controlInterval = setInterval(() => {
+            if (Object.values(this.keyState).some(key => key)) {
+                this.ws.send(JSON.stringify({
+                    action: 'key_update',
+                    keys: this.keyState
+                }));
+            }
+        }, 16);
+
         document.addEventListener('keydown', (e) => {
-            if (!this.keyState[e.key]) {  // Sende nur beim ersten Drücken
+            // Nur WASD-Steuerung erlauben wenn gegen AI
+            if (this.gameMode === 'ai' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                return; // Ignoriere Pfeiltasten im AI-Modus
+            }
+            
+            if (e.key === 'w' || e.key === 's' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
                 this.keyState[e.key] = true;
-                this.sendKeyState();
             }
         });
 
         document.addEventListener('keyup', (e) => {
-            if (this.keyState[e.key]) {  // Sende nur beim Loslassen
+            if (this.gameMode === 'ai' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                return; // Ignoriere Pfeiltasten im AI-Modus
+            }
+            
+            if (e.key === 'w' || e.key === 's' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
                 this.keyState[e.key] = false;
-                this.sendKeyState();
             }
         });
-    }
-
-    sendKeyState() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                action: 'key_update',
-                keys: this.keyState
-            }));
-        }
     }
 
     display() {
@@ -162,7 +180,9 @@ class GameScreen {
         if (this.ws) {
             this.ws.close();
         }
-        document.removeEventListener('keydown', this.handleInput);
-        document.removeEventListener('keyup', this.handleInput);
+        // Wichtig: Interval stoppen wenn das Spiel beendet wird
+        if (this.controlInterval) {
+            clearInterval(this.controlInterval);
+        }
     }
 } 

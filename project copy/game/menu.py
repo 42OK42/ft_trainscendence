@@ -6,10 +6,11 @@ class Menu:
     def __init__(self):
         self.game_settings = GameSettings()
         self.current_menu_stack = []
+        self.current_game_settings = None  # Neue Variable für aktuelle Spiel-Settings
         self.menu_items = [
             {"id": "start_game", "text": "Start Game"},
             {"id": "settings", "text": "Settings"},
-            {"id": "help", "text": "Help"}
+            {"id": "leaderboard", "text": "Leaderboard"}
         ]
         
         self.game_mode_items = [
@@ -33,7 +34,10 @@ class Menu:
         ]
 
     async def handle_menu_selection(self, websocket: WebSocket, selection: str):
-        print(f"Menu selection received: {selection}")  # Debug
+        print(f"\n=== Menu Selection ===")
+        print(f"Selection: {selection}")
+        print(f"Current Menu Stack: {self.current_menu_stack}")
+        
         if selection == "start_game":
             self.current_menu_stack.append("main")
             return {"action": "show_submenu", "menu_items": self.game_mode_items}
@@ -44,19 +48,39 @@ class Menu:
                 "settings": self.game_settings.get_settings()
             }
             
+        elif selection == "leaderboard":
+            return {"action": "show_leaderboard"}
+            
         elif selection in ["tournament", "single_game"]:
             self.current_menu_stack.append("game_mode")
             return {"action": "show_submenu", "menu_items": self.play_mode_items, "selected_mode": selection}
             
         elif selection == "local":
-            return {"action": "start_game", "mode": "local"}
+            game_settings = self.game_settings.get_settings()
+            game_settings.update({
+                "mode": "local"
+            })
+            self.current_game_settings = game_settings
+            return {"action": "start_game", "settings": game_settings}
             
         elif selection == "ai":
             self.current_menu_stack.append("play_mode")
             return {"action": "show_submenu", "menu_items": self.ai_difficulty_items}
             
         elif selection in ["easy", "medium", "impossible"]:
-            return {"action": "start_game", "mode": "ai", "difficulty": selection}
+            print("\n=== Starting AI Game ===")
+            game_settings = self.game_settings.get_settings()
+            game_settings.update({
+                "mode": "ai",
+                "difficulty": selection
+            })
+            print(f"Final Game Settings: {game_settings}")
+            self.current_game_settings = game_settings  # Speichere die aktuellen Settings
+            
+            return {
+                "action": "start_game",
+                "settings": game_settings
+            }
             
         elif selection == "back":
             if self.current_menu_stack:
@@ -89,4 +113,9 @@ class Menu:
         pass 
 
     def get_current_settings(self):
+        # Verwende die gespeicherten Spiel-Settings, falls vorhanden
+        if self.current_game_settings is not None:
+            print(f"Using current game settings: {self.current_game_settings}")
+            return self.current_game_settings
+        # Ansonsten Standard-Settings
         return self.game_settings.get_settings() 
