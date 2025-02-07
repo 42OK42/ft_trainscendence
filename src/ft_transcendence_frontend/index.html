@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pong Game</title>
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Menü- und Spielbereich -->
+  <div id="menu-container"></div>
+  <div id="game-container"></div>
+  
+  <!-- Signup Form -->
+  <div id="signup-container">
+    <h2>Sign Up</h2>
+    <form id="signup-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required />
+      
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+      
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+      
+      <button type="submit">Sign Up</button>
+    </form>
+
+    <div id="2fa-container" style="display: none;">
+      <h3>2FA Verification</h3>
+      <label for="verification-code">
+        Enter the verification code sent to your email:
+      </label>
+      <input
+        type="text"
+        id="verification-code"
+        name="verification-code"
+        required
+      />
+      <button id="verify-code">Verify Code</button>
+    </div>
+  </div>
+
+  <!-- Login Form (Initially hidden) -->
+  <div id="login-container">
+    <h2>Login</h2>
+    <form id="login-form">
+      <label for="login-username">Username</label>
+      <input type="text" id="login-username" name="login-username" required />
+  
+      <label for="login-password">Password</label>
+      <input
+        type="password"
+        id="login-password"
+        name="login-password"
+        required
+      />
+  
+      <button type="submit">Login</button>
+    </form>
+  </div>
+
+ <!-- Profil-Container (z. B. im Body) -->
+<div id="profile-container" style="display: none;" class="profile-container">
+  <h2>Willkommen, <span id="profile-username"></span>!</h2>
+  
+  <div class="profile-info">
+    <!-- Avatar-Bild -->
+    <img id="profile-avatar" src="" alt="Avatar" />
+
+    <div class="profile-details">
+      <p><strong>Email:</strong> <span id="profile-email"></span></p>
+      <p><strong>Bio:</strong> <span id="profile-bio"></span></p>
+      <p><strong>Geburtstag:</strong> <span id="profile-birth_date"></span></p>
+    </div>
+  </div>
+
+  <form id="profile-form" enctype="multipart/form-data">
+    <label for="avatar-input">Avatar ändern:</label>
+    <input id="avatar-input" type="file" accept="image/*" />
+  </form>
+  
+
+  <button id="edit-profile-button">Profil bearbeiten</button>
+  <button id="logout-button">Logout</button>
+</div>
+
+
+
+  <!-- Skripte (am Ende des Body platzieren) -->
+  <script src="js/game/displayLeaderboard.js"></script>
+  <script src="js/game/displayMenu.js"></script>
+  <script src="js/game/game_screen.js"></script>
+  <script src="js/signup.js"></script>
+  <script src="js/game/matchmaking.js"></script>
+</body>
+</html>

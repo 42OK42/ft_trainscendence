@@ -1,45 +1,51 @@
-# ft_trainsendence
+# ft_transcendence
 
-## Switching to the Beta Branch
-```bash
-// for the beta_branch
-git checkout beta_register_login
-```
+> Time to shine! 
 
-## Setup (Only Once)
-### Steps:
-1. Install `virtualenv`:
-   ```bash
-   python3 -m pip install --user virtualenv
-   ```
-2. Create and activate the virtual environment:
-   ```bash
-   python3 -m virtualenv venv
-   source venv/bin/activate
-   ```
-3. Install Django:
-   ```bash
-   pip install django
-   ```
+## Project Overview
 
-## Running the Project
-1. Navigate to the project directories:
-   ```bash
-   cd myproject
-   cd bigproject
-   ```
-2. Apply migrations:
-   ```bash
-   python3 manage.py makemigrations
-   python3 manage.py migrate
-   ```
-3. Start the development server:
-   ```bash
-   python3 manage.py runserver
+ft_transcendence is a group project focused on creating a website for a Pong contest. The project requires adherence to specific technical and security constraints, with opportunities for modular enhancements.
 
+## Essential Points
 
-for olli branch
+- **Decision-Making:** Flexibility in module implementation within specified constraints. Justifications may be required during evaluation.
+- **Technology Use:** Use of libraries or tools that provide complete solutions for features or modules is prohibited. Small libraries for subcomponents are allowed.
+- **Design Considerations:** Thorough understanding of project requirements is crucial before coding.
 
-   python3 -m uvicorn pong_game:app --host 0.0.0.0 --reload
+Thanks to your website, users will play Pong with others. 
 
-available at http://localhost:8000/
+## Mandatory Requirements
+
+1. **Website Development**
+   - Single-page application using pure vanilla JavaScript for frontend unless overridden by a module.The user should be able to use the Back and Forward buttons of the browser.
+   - Backend in pure Ruby, unless overridden by a module.
+   - Compatibility with the latest version of Google Chrome.
+   - No unhandled errors or warnings during navigation.
+   - Deployment via a single Docker command, using rootless mode on Linux clusters.
+
+2. **Game Features**
+   - Real-time multiplayer Pong game with identical paddle speeds for all players, including AI.
+   - Tournament system with player registration and matchmaking.
+
+3. **Security Concerns**
+   - Password hashing, protection against SQL injections/XSS.
+   - HTTPS for all connections.
+   - Form and user input validation.
+
+## Modules
+
+- **Minimum of 7 Major Modules Required:**
+  - Options include Web, User Management, Gameplay, AI-Algo, Cybersecurity, DevOps, Graphics, Accessibility, and Server-Side Pong.
+
+## Evaluation
+- While the visual aesthetics can vary, it must still capture the essence of the original Pong (1972).
+- Justification required for any unapproved libraries or tools.
+- Bonus points available for additional modules, assessed only if mandatory requirements are perfectly met.
+
+## Version
+
+- **Current Version:** 15.1
+
+## modules
+
+[nginx](README_Omio.MD)
