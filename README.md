@@ -1,6 +1,6 @@
 # ft_transcendence
 
-> Time to shine! 
+> Time to shine
 
 ## Project Overview
 
